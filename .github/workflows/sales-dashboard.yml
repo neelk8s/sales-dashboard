@@ -1,0 +1,100 @@
+name: Sales Dashboard CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1 - Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2 - Setup Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      # Step 3 - Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+
+      # Step 4 - Run database script
+      - name: Create Sales Database
+        run: |
+          python create_db.py
+
+      # Step 5 - Verify database was created
+      - name: Verify database
+        run: |
+          python - <<EOF
+          import sqlite3
+          conn = sqlite3.connect('sales.db')
+          cursor = conn.cursor()
+          cursor.execute('SELECT COUNT(*) FROM sales')
+          count = cursor.fetchone()[0]
+          print(f'Total records: {count}')
+          assert count == 500, f'Expected 500 records but got {count}'
+          print('✅ Database verification passed!')
+          conn.close()
+          EOF
+
+      # Step 6 - Check all products exist
+      - name: Verify products
+        run: |
+          python - <<EOF
+          import sqlite3
+          conn = sqlite3.connect('sales.db')
+          cursor = conn.cursor()
+          cursor.execute('SELECT DISTINCT product FROM sales')
+          products = [row[0] for row in cursor.fetchall()]
+          print(f'Products found: {products}')
+          expected = ['Laptop', 'Phone', 'Tablet', 'Watch', 'Headphones']
+          for p in expected:
+              assert p in products, f'Missing product: {p}'
+          print('✅ All products verified!')
+          conn.close()
+          EOF
+
+      # Step 7 - Check all regions exist
+      - name: Verify regions
+        run: |
+          python - <<EOF
+          import sqlite3
+          conn = sqlite3.connect('sales.db')
+          cursor = conn.cursor()
+          cursor.execute('SELECT DISTINCT region FROM sales')
+          regions = [row[0] for row in cursor.fetchall()]
+          print(f'Regions found: {regions}')
+          expected = ['North', 'South', 'East', 'West']
+          for r in expected:
+              assert r in regions, f'Missing region: {r}'
+          print('✅ All regions verified!')
+          conn.close()
+          EOF
+
+      # Step 8 - Print summary
+      - name: Print Summary
+        run: |
+          python - <<EOF
+          import sqlite3
+          conn = sqlite3.connect('sales.db')
+          cursor = conn.cursor()
+          cursor.execute('SELECT SUM(revenue) FROM sales')
+          total = cursor.fetchone()[0]
+          cursor.execute('SELECT COUNT(*) FROM sales')
+          count = cursor.fetchone()[0]
+          print('================================')
+          print(f'  Total Records : {count}')
+          print(f'  Total Revenue : ${total:,.2f}')
+          print('  Status        : ✅ All good!')
+          print('================================')
+          conn.close()
+          EOF
