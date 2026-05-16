@@ -41,7 +41,7 @@ jobs:
           cursor.execute('SELECT COUNT(*) FROM sales')
           count = cursor.fetchone()[0]
           print(f'Total records: {count}')
-          assert count >== 500, f'Expected 500 records but got {count}'
+          assert count >= 500, f'Expected 500 records but got {count}'
           print('✅ Database verification passed!')
           conn.close()
           EOF
